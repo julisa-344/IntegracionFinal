@@ -1,35 +1,48 @@
 import { useForm } from 'react-hook-form'
-import { useQueryClient, useMutation } from '@tanstack/react-query'
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import ErrorMessage from '../components/ErrorMessage'
 import { ProfileForm, User } from '../types'
-import { updateProfile, uploadImage } from '../api/DevTreeAPI'
+import { updateProfile, uploadImage, getUser } from '../api/DevTreeAPI'
 import useSocket from '../hooks/useSocket'
+import ThemeSwitcher from '../components/ThemeSwitcher'
 
 export default function ProfileView() {
     const queryClient = useQueryClient()
-    const data : User = queryClient.getQueryData(['user'])!
-    const [profileViews, setProfileViews] = useState(data.profileViews ?? 0)
+    
+    const { data: user, isLoading, isError } = useQuery({
+        queryKey: ['user'],
+        queryFn: getUser
+    })
 
-    const { register, handleSubmit, formState: { errors } } = useForm<ProfileForm>({ defaultValues: {
-        handle: data.handle,
-        description: data.description
-    } })
+    const [profileViews, setProfileViews] = useState(0)
+    
+    const { register, handleSubmit, formState: { errors }, reset } = useForm<ProfileForm>()
+
+    useEffect(() => {
+        if(user) {
+            reset({
+                handle: user.handle,
+                description: user.description
+            })
+            setProfileViews(user.profileViews)
+        }
+    }, [user, reset])
 
     // Manejar actualizaciones en tiempo real del contador
     const onSocketUpdate = useCallback((payload: any) => {
-        if (payload.handle !== data.handle) return
+        if (!user || payload.handle !== user.handle) return
         setProfileViews(payload.profileViews)
         // También actualizar React Query
         queryClient.setQueryData(['user'], (prev: User) => ({
             ...prev,
             profileViews: payload.profileViews
         }))
-    }, [data.handle, queryClient])
+    }, [user, queryClient])
 
     // Conectar socket para escuchar cambios en perfil
-    useSocket(import.meta.env.VITE_API_URL, data.handle, onSocketUpdate)
+    useSocket(import.meta.env.VITE_API_URL, user?.handle || '', onSocketUpdate)
 
     const updateProfileMutation = useMutation({
         mutationFn: updateProfile,
@@ -64,73 +77,84 @@ export default function ProfileView() {
     }
 
     const handleUserProfileForm = (formData: ProfileForm) => {
-        const user : User = queryClient.getQueryData(['user'])!
-        user.description = formData.description
-        user.handle = formData.handle
-        updateProfileMutation.mutate(user)
+        if(!user) return;
+        const updatedUser = { ...user, ...formData }
+        updateProfileMutation.mutate(updatedUser)
     }
 
+    if(isLoading) return <p className="text-center p-10 dark:text-white">Cargando perfil...</p>
+    if(isError) return <p className="text-center p-10 text-red-500">Error al cargar perfil</p>
+    if(!user) return null
+
     return (
-        <form
-            className="bg-white p-10 rounded-lg space-y-5"
-            onSubmit={handleSubmit(handleUserProfileForm)}
-        >
-            <legend className="text-2xl text-slate-800 text-center">Editar Información</legend>
-
-            <div className="text-center bg-slate-100/50 rounded-lg p-3 max-w-sm mx-auto">
-                <p className="text-sm text-slate-600">Visitas a mi perfil</p>
-                <p className="text-2xl font-bold text-slate-800">{profileViews}</p>
+        <div className="max-w-3xl mx-auto">
+            <div className="flex justify-end mb-5">
+                <ThemeSwitcher />
             </div>
-            <div className="grid grid-cols-1 gap-2">
-                <label
-                    htmlFor="handle"
-                >Handle:</label>
+            <form
+                className="bg-white dark:bg-slate-800 p-10 rounded-lg space-y-5 shadow-lg transition-colors duration-300"
+                onSubmit={handleSubmit(handleUserProfileForm)}
+            >
+                <legend className="text-2xl text-slate-800 dark:text-white text-center">Editar Información</legend>
+
+                <div className="text-center bg-slate-100/50 dark:bg-slate-700/50 rounded-lg p-3 max-w-sm mx-auto">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">Visitas a mi perfil</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-white">{profileViews}</p>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                    <label
+                        className="text-slate-800 dark:text-slate-200"
+                        htmlFor="handle"
+                    >Handle:</label>
+                    <input
+                        type="text"
+                        className="border-none bg-slate-100 dark:bg-slate-900 dark:text-white rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
+                        placeholder="handle o Nombre de Usuario"
+                        {...register('handle', {
+                            required: "El Nombre de Usuario es obligatorio"
+                        })}
+                    />
+
+                    {errors.handle && <ErrorMessage>{errors.handle.message}</ErrorMessage>}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                    <label
+                        className="text-slate-800 dark:text-slate-200"
+                        htmlFor="description"
+                    >Descripción:</label>
+                    <textarea
+                        className="border-none bg-slate-100 dark:bg-slate-900 dark:text-white rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Tu Descripción"
+                        {...register('description', {
+                            required: "La Descripción es obligatoria"
+                        })}
+                    />
+
+                    {errors.description && <ErrorMessage>{errors.description.message}</ErrorMessage>}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                    <label
+                        className="text-slate-800 dark:text-slate-200"
+                        htmlFor="image"
+                    >Imagen:</label>
+                    <input
+                        id="image"
+                        type="file"
+                        name="image"
+                        className="border-none bg-slate-100 dark:bg-slate-900 dark:text-white rounded-lg p-2 w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                        accept="image/*"
+                        onChange={handleChange}
+                    />
+                </div>
+
                 <input
-                    type="text"
-                    className="border-none bg-slate-100 rounded-lg p-2"
-                    placeholder="handle o Nombre de Usuario"
-                    {...register('handle', {
-                        required: "El Nombre de Usuario es obligatorio"
-                    })}
+                    type="submit"
+                    className="bg-cyan-400 hover:bg-cyan-500 p-2 text-lg w-full uppercase text-slate-600 dark:text-slate-800 rounded-lg font-bold cursor-pointer transition-colors"
+                    value='Guardar Cambios'
                 />
-
-                {errors.handle && <ErrorMessage>{errors.handle.message}</ErrorMessage>}
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-                <label
-                    htmlFor="description"
-                >Descripción:</label>
-                <textarea
-                    className="border-none bg-slate-100 rounded-lg p-2"
-                    placeholder="Tu Descripción"
-                    {...register('description', {
-                        required: "La Descripción es obligatoria"
-                    })}
-                />
-
-                {errors.description && <ErrorMessage>{errors.description.message}</ErrorMessage>}
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-                <label
-                    htmlFor="image"
-                >Imagen:</label>
-                <input
-                    id="image"
-                    type="file"
-                    name="image"
-                    className="border-none bg-slate-100 rounded-lg p-2"
-                    accept="image/*"
-                    onChange={handleChange}
-                />
-            </div>
-
-            <input
-                type="submit"
-                className="bg-cyan-400 p-2 text-lg w-full uppercase text-slate-600 rounded-lg font-bold cursor-pointer"
-                value='Guardar Cambios'
-            />
-        </form>
+            </form>
+        </div>
     )
 }

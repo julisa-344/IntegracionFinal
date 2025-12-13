@@ -29,7 +29,7 @@ export default function HandleView() {
     // conectar socket (usa VITE_API_URL para la URL del backend)
     useSocket(import.meta.env.VITE_API_URL, handle, onSocketUpdate)
 
-    if(isLoading) return <p className='text-center text-white'>Cargando...</p>
+    if(isLoading) return <p className='text-center text-slate-800 dark:text-white'>Cargando...</p>
     if(error) return <Navigate to={'/404'} />
     if(data) return <HandleData data={data} />
 }
