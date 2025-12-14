@@ -18,13 +18,14 @@
     "@tanstack/react-query": "^5.18.1",
     "@tanstack/react-query-devtools": "^5.18.1",
     "axios": "^1.6.7",
+    "framer-motion": "^12.23.26",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.49.3",
     "react-router-dom": "^6.21.3",
     "react-slugify": "^3.0.3",
-    "sonner": "^1.4.0",
-    "socket.io-client": "^4.7.2"
+    "socket.io-client": "^4.7.2",
+    "sonner": "^1.4.0"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",

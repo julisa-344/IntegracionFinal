@@ -5,6 +5,8 @@ import { useCallback } from 'react'
 import { getUserByHandle } from '../api/DevTreeAPI'
 import HandleData from '../components/HandleData'
 import useSocket from '../hooks/useSocket'
+import ThemeSwitcher from '../components/ThemeSwitcher'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 export default function HandleView() {
 
@@ -29,7 +31,14 @@ export default function HandleView() {
     // conectar socket (usa VITE_API_URL para la URL del backend)
     useSocket(import.meta.env.VITE_API_URL, handle, onSocketUpdate)
 
-    if(isLoading) return <p className='text-center text-slate-800 dark:text-white'>Cargando...</p>
+    if(isLoading) return <LoadingSkeleton />
     if(error) return <Navigate to={'/404'} />
-    if(data) return <HandleData data={data} />
+    if(data) return (
+        <div className="max-w-3xl mx-auto">
+            <div className="flex justify-end mb-5">
+                <ThemeSwitcher />
+            </div>
+            <HandleData data={data} />
+        </div>
+    )
 }

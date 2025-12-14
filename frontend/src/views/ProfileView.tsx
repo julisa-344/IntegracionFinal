@@ -3,10 +3,12 @@ import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import ErrorMessage from '../components/ErrorMessage'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 import { ProfileForm, User } from '../types'
 import { updateProfile, uploadImage, getUser } from '../api/DevTreeAPI'
 import useSocket from '../hooks/useSocket'
 import ThemeSwitcher from '../components/ThemeSwitcher'
+import { motion } from 'framer-motion'
 
 export default function ProfileView() {
     const queryClient = useQueryClient()
@@ -82,7 +84,7 @@ export default function ProfileView() {
         updateProfileMutation.mutate(updatedUser)
     }
 
-    if(isLoading) return <p className="text-center p-10 dark:text-white">Cargando perfil...</p>
+    if(isLoading) return <LoadingSkeleton />
     if(isError) return <p className="text-center p-10 text-red-500">Error al cargar perfil</p>
     if(!user) return null
 
@@ -91,9 +93,12 @@ export default function ProfileView() {
             <div className="flex justify-end mb-5">
                 <ThemeSwitcher />
             </div>
-            <form
+            <motion.form
                 className="bg-white dark:bg-slate-800 p-10 rounded-lg space-y-5 shadow-lg transition-colors duration-300"
                 onSubmit={handleSubmit(handleUserProfileForm)}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
             >
                 <legend className="text-2xl text-slate-800 dark:text-white text-center">Editar Información</legend>
 
@@ -154,7 +159,7 @@ export default function ProfileView() {
                     className="bg-cyan-400 hover:bg-cyan-500 p-2 text-lg w-full uppercase text-slate-600 dark:text-slate-800 rounded-lg font-bold cursor-pointer transition-colors"
                     value='Guardar Cambios'
                 />
-            </form>
+            </motion.form>
         </div>
     )
 }
